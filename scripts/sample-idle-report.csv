@@ -1,0 +1,8 @@
+resource_type,resource_id,name,instance_type,days_idle,avg_cpu_pct
+EC2 Instance (stopped),i-0a1b2c3d4e5f6g7h8,old-staging-box,t3.medium,42,
+EC2 Instance (stopped),i-0b2c3d4e5f6g7h8i9,test-runner,t3.small,18,
+EC2 Instance (stopped),i-0c3d4e5f6g7h8i9j0,(no name tag),t3.micro,91,
+EBS Volume (unattached),vol-0a1b2c3d4e5f6g7h8,old-staging-box-root,gp3 100GB,45,
+EBS Volume (unattached),vol-0b2c3d4e5f6g7h8i9,(no name tag),gp2 50GB,30,
+Elastic IP (unassociated),eipalloc-0a1b2c3d4e5f6g7h8,(no name tag),52.14.88.201,,
+EC2 Instance (low CPU - review),i-0d4e5f6g7h8i9j0k1,api-worker-2,m5.large,,3.8

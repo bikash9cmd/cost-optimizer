@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Cost monitoring + idle resource detection. Two Lambdas on EventBridge
+  schedules, both posting to Slack. See docs/architecture.md for the full
+  picture.
+
+Parameters:
+  SlackWebhookUrl:
+    Type: String
+    NoEcho: true
+    Description: Slack incoming webhook URL (consider Secrets Manager instead for anything beyond personal use)
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 100
+  DailyThresholdUsd:
+    Type: Number
+    Default: 10
+  StoppedDaysThreshold:
+    Type: Number
+    Default: 7
+  LowCpuThresholdPct:
+    Type: Number
+    Default: 5
+
+Resources:
+
+  IdleReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "cost-optimizer-idle-reports-${AWS::AccountId}"
+      LifecycleConfiguration:
+        Rules:
+          # reports are useful for trend-watching but not forever -
+          # 90 days felt like a reasonable amount of history to keep
+          - Id: ExpireOldReports
+            Status: Enabled
+            ExpirationInDays: 90
+
+  SpendAlertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: cost-optimizer-spend-alert
+      CodeUri: ../lambdas/
+      Handler: spend_alert.handler.handler
+      Runtime: python3.12
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          MONTHLY_BUDGET_USD: !Ref MonthlyBudgetUsd
+          DAILY_THRESHOLD_USD: !Ref DailyThresholdUsd
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ce:GetCostAndUsage
+              Resource: "*"   # Cost Explorer doesn't support resource-level scoping
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: "cron(0 7 * * ? *)"   # 7am UTC daily
+            Description: Daily spend check
+
+  IdleDetectorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: cost-optimizer-idle-detector
+      CodeUri: ../lambdas/
+      Handler: idle_detector.handler.handler
+      Runtime: python3.12
+      Timeout: 120
+      MemorySize: 256
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          REPORT_BUCKET: !Ref IdleReportBucket
+          STOPPED_DAYS_THRESHOLD: !Ref StoppedDaysThreshold
+          LOW_CPU_THRESHOLD_PCT: !Ref LowCpuThresholdPct
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeInstances
+                - ec2:DescribeVolumes
+                - ec2:DescribeAddresses
+                - cloudwatch:GetMetricStatistics
+              Resource: "*"   # read-only describe/get calls, no resource-level support either
+        - S3CrudPolicy:
+            BucketName: !Ref IdleReportBucket
+      Events:
+        WeeklySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: "cron(0 8 ? * MON *)"   # Monday mornings, 8am UTC
+            Description: Weekly idle resource scan
+
+Outputs:
+  ReportBucketName:
+    Value: !Ref IdleReportBucket
+  SpendAlertFunctionArn:
+    Value: !GetAtt SpendAlertFunction.Arn
+  IdleDetectorFunctionArn:
+    Value: !GetAtt IdleDetectorFunction.Arn
