@@ -99,3 +99,7 @@ case study.
       should be Parameter Store values so they're tunable without a redeploy.
 - [ ] Only handles EC2 / EBS / EIP — RDS idle detection (low connections)
       would be the obvious next thing to add.
+
+## License
+
+Released under the [MIT License](LICENSE).
