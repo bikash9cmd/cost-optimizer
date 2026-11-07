@@ -53,6 +53,8 @@ docs/
 
 tests/
   test_idle_detector.py
+  test_simulate_savings.py
+  test_spend_alert.py
 ```
 
 ## Running tests
