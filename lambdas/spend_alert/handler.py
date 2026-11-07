@@ -19,8 +19,26 @@ from common.slack import post_message
 
 ce = boto3.client("ce")
 
-MONTHLY_BUDGET_USD = float(os.environ.get("MONTHLY_BUDGET_USD", "100"))
-DAILY_THRESHOLD_USD = float(os.environ.get("DAILY_THRESHOLD_USD", "10"))
+
+
+def _read_positive_float(name: str, default: str) -> float:
+    """Read a USD threshold from the environment. Fails loudly on a bad
+    value instead of half-working: a zero budget used to raise
+    ZeroDivisionError mid-run (so no alert went out at all), and a typo like
+    "$100" gave a bare float() error that didn't say which variable was
+    wrong."""
+    raw = os.environ.get(name, default)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be a number in USD, got {raw!r}") from None
+    if not value > 0:  # also rejects NaN
+        raise ValueError(f"{name} must be greater than 0, got {raw!r}")
+    return value
+
+
+MONTHLY_BUDGET_USD = _read_positive_float("MONTHLY_BUDGET_USD", "100")
+DAILY_THRESHOLD_USD = _read_positive_float("DAILY_THRESHOLD_USD", "10")
 
 
 def _get_month_to_date_cost() -> float:

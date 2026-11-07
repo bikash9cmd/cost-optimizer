@@ -59,6 +59,12 @@ README's "what's not done" list) so changing these means a redeploy, not
 just a console edit - fine for now at this scale, annoying if this grows
 into something other people are also adjusting.
 
+`MonthlyBudgetUsd` and `DailyThresholdUsd` must be greater than 0. The
+template rejects anything lower at deploy time, and if the Lambda env vars
+are edited by hand to `0`, a negative number or something like `$100`, the
+spend-alert function fails on cold start with an error naming the bad
+variable (check its CloudWatch logs) rather than silently skipping alerts.
+
 ## Failure modes I've actually hit
 
 - Cost Explorer occasionally returns a `DataUnavailableException` for the

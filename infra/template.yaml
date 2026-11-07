@@ -13,9 +13,11 @@ Parameters:
   MonthlyBudgetUsd:
     Type: Number
     Default: 100
+    MinValue: 0.01
   DailyThresholdUsd:
     Type: Number
     Default: 10
+    MinValue: 0.01
   StoppedDaysThreshold:
     Type: Number
     Default: 7
